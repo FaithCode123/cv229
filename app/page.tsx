@@ -1,28 +1,28 @@
 "use client";
 import { useState, useEffect } from "react";
+
 const ROSE = "#e9407a";
 const BLEU = "#1b2a4e";
 
 export default function CV229Final() {
   const [step, setStep] = useState(1);
   const [photo, setPhoto] = useState<string | null>(null);
-  const [form, setForm] = useState({ 
-    nom:"", poste:"", tel:"", email:"", adresse:"", quartier:"", 
-    diplomePro:"", ecole:"", 
-    exp1Titre:"", exp1Desc:"", exp1Annee:"", 
-    exp2Titre:"", exp2Desc:"", exp2Annee:"", 
-    exp3Titre:"", exp3Desc:"", exp3Annee:"", 
-    expertise:"", languesParlees:"", languesEcrites:"", profil:"" 
+  const [form, setForm] = useState({
+    nom:"", poste:"", tel:"", email:"", adresse:"", quartier:"",
+    diplomePro:"", ecole:"", exp1Titre:"", exp1Desc:"", exp1Annee:"",
+    exp2Titre:"", exp2Desc:"", exp2Annee:"", exp3Titre:"", exp3Desc:"",
+    exp3Annee:"", expertise:"", languesParlees:"", languesEcrites:"", profil:""
   });
   const [loaded, setLoaded] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   useEffect(()=>{
     const s = localStorage.getItem("cv229");
     if(s){
-      try{ 
-        const d=JSON.parse(s); 
-        if(d.form) setForm(d.form); 
-        if(d.photo) setPhoto(d.photo); 
+      try{
+        const d=JSON.parse(s);
+        if(d.form) setForm(d.form);
+        if(d.photo) setPhoto(d.photo);
       }catch{}
     }
     setLoaded(true);
@@ -30,13 +30,13 @@ export default function CV229Final() {
 
   useEffect(()=>{
     if(!loaded) return;
-    localStorage.setItem("cv229", JSON.stringify({form, photo}));
+    localStorage.setItem("cv229", JSON.stringify({form}));
   },[form, photo, loaded]);
 
   const onPhoto = (e:any)=>{
     const f=e.target.files[0];
     if(!f) return;
-    if(f.size>2*1024*1024){ alert("Photo trop lourde, max 2MB"); return; }
+    if(f.size>3*1024*1024){ alert("Photo trop lourde, max 3MB"); return; }
     const r=new FileReader();
     r.onload=ev=>setPhoto(ev.target?.result as string);
     r.readAsDataURL(f);
@@ -51,27 +51,42 @@ export default function CV229Final() {
     return true;
   };
 
+  // FONCTION PDF QUI MARCHE SUR PORTABLE
+  const handlePDF = async () => {
+    const isFacebookBrowser = /FBAN|FBAV|Messenger|FB_IAB/i.test(navigator.userAgent);
+    if (isFacebookBrowser) {
+      alert("📱 Tu es sur Facebook/Messenger. Pour télécharger le PDF, je vais ouvrir dans Chrome. Clique ensuite à nouveau sur PDF.");
+      window.open(window.location.href, '_blank');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const element = document.getElementById('cv-content');
+      if(!element){ alert("Erreur: CV non trouvé"); return; }
+
+      const opt = {
+        margin: 0,
+        filename: `CV-${form.nom.replace(/\s+/g,'-') || '229'}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, scrollY: 0, backgroundColor: '#ffffff' },
+        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      await html2pdf().set(opt).from(element).save();
+    } catch(e){
+      console.error(e);
+      alert("Erreur PDF, on lance l'impression classique");
+      window.print();
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   if(step===4){
-    const lettre=`Calavi, le 02 Novembre 2026
-Objet: Candidature au poste de ${form.poste}
-
-Madame, Monsieur,
-
-Titulaire de ${form.diplomePro} obtenu à ${form.ecole}, je souhaite rejoindre votre équipe en tant que ${form.poste}.
-
-${form.profil}
-
-Mon parcours:
-- ${form.exp1Titre} (${form.exp1Annee}) à ${form.quartier}
-- ${form.exp2Titre} (${form.exp2Annee})
-- ${form.exp3Titre} (${form.exp3Annee})
-
-Parlant ${form.languesParlees}, je reste à disposition au ${form.tel}.
-
-Veuillez agréer, Madame, Monsieur, mes salutations distinguées.
-
-${form.nom}
-${form.email} - ${form.adresse}`;
+    const lettre=`Calavi, le 02 Novembre 2026\nObjet: Candidature au poste de ${form.poste}\n\nMadame, Monsieur,\n\nTitulaire de ${form.diplomePro} obtenu à ${form.ecole}, je souhaite rejoindre votre équipe en tant que ${form.poste}.\n\n${form.profil}\n\nMon parcours:\n- ${form.exp1Titre} (${form.exp1Annee}) à ${form.quartier}\n- ${form.exp2Titre} (${form.exp2Annee})\n- ${form.exp3Titre} (${form.exp3Annee})\n\nParlant ${form.languesParlees}, je reste à disposition au ${form.tel}.\n\nVeuillez agréer, Madame, Monsieur, mes salutations distinguées.\n\n${form.nom}\n${form.email} - ${form.adresse}`;
     return(
       <main className="min-h-screen bg-white p-6 flex flex-col items-center">
         <h1 className="font-black text-xl">Page 4 - Merci d&apos;avoir utilisé CV229.ai</h1>
@@ -96,7 +111,8 @@ ${form.email} - ${form.adresse}`;
       <>
         <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap'); *{font-family:Inter,sans-serif} @media print{.no-print{display:none} @page{size:A4; margin:0} body{-webkit-print-color-adjust:exact; print-color-adjust:exact}}`}</style>
         <main className="min-h-screen bg-[#f0f0f0] flex justify-center p-0 md:p-6">
-          <div className="w-full md:w-[820px] bg-white flex flex-col shadow-xl">
+          {/* ID IMPORTANT POUR LE PDF */}
+          <div id="cv-content" className="w-full md:w-[820px] bg-white flex flex-col shadow-xl">
             <div className="flex flex-col md:flex-row flex-1">
               <div className="w-full md:w-[36%] bg-[#fcfcfc] p-7 border-b md:border-b-0 md:border-r">
                 <div className="w-40 h-40 rounded-full overflow-hidden mx-auto shadow-lg" style={{border:`4px solid ${ROSE}`}}>{photo ? <img src={photo} className="w-full h-full object-cover" alt="photo"/> : <div className="w-full h-full bg-zinc-100 flex items-center justify-center text-[10px]">PHOTO</div>}</div>
@@ -122,7 +138,7 @@ ${form.email} - ${form.adresse}`;
             <div className="h-[8px] w-full" style={{background:ROSE}}></div>
           </div>
           <div className="no-print fixed bottom-0 md:bottom-auto md:top-5 left-0 md:left-auto md:right-5 w-full md:w-[210px] bg-white md:bg-transparent p-3 md:p-0 flex flex-row md:flex-col gap-2 shadow-[0_-10px_20px_rgba(0,0,0,0.1)] md:shadow-none">
-            <button onClick={()=>window.print()} className="flex-1 text-white p-3 rounded-xl font-black text-xs" style={{background:ROSE}}>1️⃣ PDF</button>
+            <button onClick={handlePDF} disabled={isGenerating} className="flex-1 text-white p-3 rounded-xl font-black text-xs disabled:opacity-50" style={{background:ROSE}}>{isGenerating ? "⏳ Génération..." : "1️⃣ PDF"}</button>
             <button onClick={()=>setStep(4)} className="flex-1 bg-[#1b2a4e] text-white p-3 rounded-xl font-black text-xs">2️⃣ Lettre</button>
             <button onClick={()=>setStep(1)} className="hidden md:block bg-white border p-2 rounded text-xs">Modifier</button>
           </div>
@@ -136,7 +152,7 @@ ${form.email} - ${form.adresse}`;
       <h1 className="font-black text-center">CV229.ai - Version Finale</h1>
       <p className="text-[11px] text-zinc-500">Sauvegarde auto • Champs vides • Tout obligatoire</p>
       <div className="w-full max-w-xl bg-zinc-50 p-5 rounded-2xl border mt-4">
-        <label className="text-xs font-bold">Photo * (max 2MB)</label><input type="file" onChange={onPhoto} className="w-full mb-3 text-xs" />
+        <label className="text-xs font-bold">Photo * (max 3MB)</label><input type="file" onChange={onPhoto} className="w-full mb-3 text-xs" />
         <div className="grid grid-cols-2 gap-2"><input value={form.nom} onChange={e=>setForm({...form, nom:e.target.value})} placeholder="Nom complet *" className="border p-2 rounded text-sm" /><input value={form.poste} onChange={e=>setForm({...form, poste:e.target.value})} placeholder="Poste *" className="border p-2 rounded text-sm" /></div>
         <div className="grid grid-cols-2 gap-2 mt-2"><input value={form.tel} onChange={e=>setForm({...form, tel:e.target.value})} placeholder="Tél WhatsApp *" className="border p-2 rounded text-sm" /><input value={form.quartier} onChange={e=>setForm({...form, quartier:e.target.value})} placeholder="Quartier * (Sèmè-Podji)" className="border p-2 rounded text-sm" /></div>
         <input value={form.adresse} onChange={e=>setForm({...form, adresse:e.target.value})} placeholder="Ville * (Cotonou)" className="w-full border p-2 rounded mt-2 text-sm" />
